@@ -17,7 +17,13 @@ public class ArVrPluginPlugin: CAPPlugin, CAPBridgedPlugin {
     private var implementation: ArVrPlugin?
 
     override public func load() {
-        implementation = ArVrPlugin(bridge: self.bridge!)
+        guard let bridge = self.bridge else { return }
+        implementation = ArVrPlugin(bridge: bridge)
+
+        // Wire the event callback to Capacitor's notifyListeners
+        implementation?.onObjectSelected = { [weak self] data in
+            self?.notifyListeners("onObjectSelected", data: data)
+        }
     }
 
     @objc func startSession(_ call: CAPPluginCall) {

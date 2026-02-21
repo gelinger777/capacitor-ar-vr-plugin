@@ -6,6 +6,9 @@ export interface Poi {
   lng: number;
   label: string;
   url: string;
+  icon?: string;       // Emoji or icon identifier (default: "📍")
+  rating?: number;     // 0–5 star rating (default: 4.0)
+  votes?: number;      // Number of user votes (default: 0)
 }
 
 export interface ArVrSessionOptions {
