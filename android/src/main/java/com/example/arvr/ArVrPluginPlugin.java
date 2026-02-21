@@ -9,14 +9,28 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "ArVrPlugin")
 public class ArVrPluginPlugin extends Plugin {
 
-    private ArVrPlugin implementation = new ArVrPlugin();
+    private ArVrPlugin implementation;
+
+    @Override
+    public void load() {
+        implementation = new ArVrPlugin(getContext(), getBridge());
+    }
 
     @PluginMethod
-    public void echo(PluginCall call) {
-        String value = call.getString("value");
+    public void startSession(PluginCall call) {
+        implementation.startSession(call.getArray("pois"));
+        call.resolve();
+    }
 
-        JSObject ret = new JSObject();
-        ret.put("value", implementation.echo(value));
-        call.resolve(ret);
+    @PluginMethod
+    public void stopSession(PluginCall call) {
+        implementation.stopSession();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void toggleVRMode(PluginCall call) {
+        implementation.toggleVRMode(call.getBoolean("enable", false));
+        call.resolve();
     }
 }

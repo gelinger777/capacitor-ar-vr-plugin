@@ -10,14 +10,30 @@ public class ArVrPluginPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "ArVrPluginPlugin"
     public let jsName = "ArVrPlugin"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "echo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "startSession", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopSession", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "toggleVRMode", returnType: CAPPluginReturnPromise)
     ]
-    private let implementation = ArVrPlugin()
+    private var implementation: ArVrPlugin?
 
-    @objc func echo(_ call: CAPPluginCall) {
-        let value = call.getString("value") ?? ""
-        call.resolve([
-            "value": implementation.echo(value)
-        ])
+    override public func load() {
+        implementation = ArVrPlugin(bridge: self.bridge!)
+    }
+
+    @objc func startSession(_ call: CAPPluginCall) {
+        let pois = call.getArray("pois", JSObject.self) ?? []
+        implementation?.startSession(pois: pois)
+        call.resolve()
+    }
+
+    @objc func stopSession(_ call: CAPPluginCall) {
+        implementation?.stopSession()
+        call.resolve()
+    }
+
+    @objc func toggleVRMode(_ call: CAPPluginCall) {
+        let enable = call.getBool("enable") ?? false
+        implementation?.toggleVRMode(enable: enable)
+        call.resolve()
     }
 }
