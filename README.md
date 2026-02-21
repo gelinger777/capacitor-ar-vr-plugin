@@ -34,6 +34,7 @@ Ensure your `AndroidManifest.xml` includes permissions for Camera and Location, 
 
 <docgen-index>
 
+* [`checkAvailability()`](#checkavailability)
 * [`startSession(...)`](#startsession)
 * [`stopSession()`](#stopsession)
 * [`toggleVRMode(...)`](#togglevrmode)
@@ -44,6 +45,17 @@ Ensure your `AndroidManifest.xml` includes permissions for Camera and Location, 
 
 <docgen-api>
 <!--Update the source file JSDoc comments and rerun docgen to update the docs below-->
+
+### checkAvailability()
+
+```typescript
+checkAvailability() => Promise<ArAvailabilityResult>
+```
+
+**Returns:** <code>Promise&lt;<a href="#aravailabilityresult">ArAvailabilityResult</a>&gt;</code>
+
+--------------------
+
 
 ### startSession(...)
 
@@ -99,6 +111,15 @@ addListener(eventName: 'onObjectSelected', listenerFunc: (data: { id: string; ur
 ### Interfaces
 
 
+#### ArAvailabilityResult
+
+| Prop            | Type                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| **`available`** | <code>boolean</code>                                                                           |
+| **`status`**    | <code>'supported' \| 'unsupported_device' \| 'not_installed' \| 'outdated' \| 'unknown'</code> |
+| **`message`**   | <code>string</code>                                                                            |
+
+
 #### ArVrSessionOptions
 
 | Prop       | Type               |
@@ -108,13 +129,16 @@ addListener(eventName: 'onObjectSelected', listenerFunc: (data: { id: string; ur
 
 #### Poi
 
-| Prop        | Type                |
-| ----------- | ------------------- |
-| **`id`**    | <code>string</code> |
-| **`lat`**   | <code>number</code> |
-| **`lng`**   | <code>number</code> |
-| **`label`** | <code>string</code> |
-| **`url`**   | <code>string</code> |
+| Prop         | Type                |
+| ------------ | ------------------- |
+| **`id`**     | <code>string</code> |
+| **`lat`**    | <code>number</code> |
+| **`lng`**    | <code>number</code> |
+| **`label`**  | <code>string</code> |
+| **`url`**    | <code>string</code> |
+| **`icon`**   | <code>string</code> |
+| **`rating`** | <code>number</code> |
+| **`votes`**  | <code>number</code> |
 
 
 #### PluginListenerHandle

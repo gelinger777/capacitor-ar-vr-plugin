@@ -14,6 +14,7 @@ import android.widget.TextView;
 
 import androidx.core.app.ActivityCompat;
 
+import com.google.ar.core.ArCoreApk;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.google.ar.core.Anchor;
@@ -43,13 +44,18 @@ public class ArVrPlugin {
     private boolean isVrMode = false;
     private Location userLocation;
 
+    public interface SessionCallback {
+        void onSuccess();
+        void onError(String message);
+    }
+
     public ArVrPlugin(Context context, ArVrPluginPlugin plugin) {
         this.context = context;
         this.plugin = plugin;
     }
 
     @SuppressLint("MissingPermission")
-    public void startSession(JSArray poiArray) {
+    public void startSession(JSArray poiArray, SessionCallback callback) {
         // Parse POI data
         try {
             this.pois = new ArrayList<>();
@@ -73,20 +79,73 @@ public class ArVrPlugin {
                 if (location != null) {
                     userLocation = location;
                 }
-                plugin.getBridge().executeOnMainThread(() -> {
-                    setupArScene();
-                    makeWebViewTransparent();
-                    addPoiAnchors();
-                });
+                initArSession(callback);
             });
         } else {
-            // Proceed without GPS (use fallback coordinates)
-            plugin.getBridge().executeOnMainThread(() -> {
-                setupArScene();
-                makeWebViewTransparent();
-                addPoiAnchors();
-            });
+            initArSession(callback);
         }
+    }
+
+    private void initArSession(SessionCallback callback) {
+        // Create the session on a background thread to avoid ANR
+        new Thread(() -> {
+            try {
+                // Check ARCore availability
+                ArCoreApk.Availability availability =
+                        ArCoreApk.getInstance().checkAvailability(context);
+                if (!availability.isSupported()) {
+                    callback.onError(
+                        "ARCore is not supported on this device. " +
+                        "Please use a physical ARCore-compatible device.");
+                    return;
+                }
+
+                // Create session on background thread
+                Session session = new Session(context);
+                Config config = new Config(session);
+                config.setUpdateMode(Config.UpdateMode.LATEST_CAMERA_IMAGE);
+                config.setPlaneFindingMode(Config.PlaneFindingMode.DISABLED);
+                session.configure(config);
+
+                // Switch to main thread for view operations
+                plugin.getBridge().executeOnMainThread(() -> {
+                    try {
+                        arSceneView = new ArSceneView(context);
+                        arSceneView.setLayoutParams(new FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams.MATCH_PARENT,
+                                FrameLayout.LayoutParams.MATCH_PARENT));
+
+                        ViewGroup parent = (ViewGroup) plugin.getBridge().getWebView().getParent();
+                        int index = parent.indexOfChild(plugin.getBridge().getWebView());
+                        parent.addView(arSceneView, index);
+
+                        arSceneView.setupSession(session);
+                        arSceneView.resume();
+                        makeWebViewTransparent();
+                        addPoiAnchors();
+
+                        android.util.Log.i("ArVrPlugin", "AR session started successfully");
+                        callback.onSuccess();
+                    } catch (Exception e) {
+                        android.util.Log.e("ArVrPlugin", "Failed to start AR view: " + e.getMessage());
+                        callback.onError("Failed to start AR view: " + e.getMessage());
+                    }
+                });
+
+            } catch (com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException e) {
+                callback.onError(
+                    "Google Play Services for AR is not installed. " +
+                    "Please install it from the Play Store.");
+            } catch (com.google.ar.core.exceptions.FatalException e) {
+                callback.onError(
+                    "ARCore encountered a fatal error. " +
+                    "This usually means the device camera is not accessible. " +
+                    "If you are using an emulator, please test on a physical device instead.");
+            } catch (Exception e) {
+                android.util.Log.e("ArVrPlugin", "AR setup failed: " + e.getMessage());
+                callback.onError("AR setup failed: " + e.getMessage());
+            }
+        }).start();
     }
 
     public void stopSession() {
@@ -112,34 +171,6 @@ public class ArVrPlugin {
         });
     }
 
-    // ─── AR Setup ────────────────────────────────────────────────
-
-    private void setupArScene() {
-        try {
-            arSceneView = new ArSceneView(context);
-            arSceneView.setLayoutParams(new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT));
-
-            // Insert behind WebView
-            ViewGroup parent = (ViewGroup) plugin.getBridge().getWebView().getParent();
-            int index = parent.indexOfChild(plugin.getBridge().getWebView());
-            parent.addView(arSceneView, index);
-
-            // Configure ARCore session
-            Session session = new Session(context);
-            Config config = new Config(session);
-            config.setUpdateMode(Config.UpdateMode.LATEST_CAMERA_IMAGE);
-            config.setPlaneFindingMode(Config.PlaneFindingMode.DISABLED);
-            session.configure(config);
-
-            arSceneView.setupSession(session);
-            arSceneView.resume();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     private void makeWebViewTransparent() {
         View webView = plugin.getBridge().getWebView();

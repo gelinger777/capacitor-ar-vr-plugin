@@ -1,5 +1,6 @@
 import Foundation
 import Capacitor
+import ARKit
 
 /**
  * Please read the Capacitor iOS Plugin Development Guide
@@ -10,6 +11,7 @@ public class ArVrPluginPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "ArVrPluginPlugin"
     public let jsName = "ArVrPlugin"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "checkAvailability", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "toggleVRMode", returnType: CAPPluginReturnPromise)
@@ -24,6 +26,20 @@ public class ArVrPluginPlugin: CAPPlugin, CAPBridgedPlugin {
         implementation?.onObjectSelected = { [weak self] data in
             self?.notifyListeners("onObjectSelected", data: data)
         }
+    }
+
+    @objc func checkAvailability(_ call: CAPPluginCall) {
+        var result = JSObject()
+        if ARWorldTrackingConfiguration.isSupported {
+            result["available"] = true
+            result["status"] = "supported"
+            result["message"] = "ARKit is ready to use."
+        } else {
+            result["available"] = false
+            result["status"] = "unsupported_device"
+            result["message"] = "This device does not support ARKit. AR features require an A9 chip or later."
+        }
+        call.resolve(result)
     }
 
     @objc func startSession(_ call: CAPPluginCall) {
