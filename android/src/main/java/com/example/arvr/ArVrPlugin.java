@@ -38,7 +38,6 @@ public class ArVrPlugin {
     private Context context;
     private ArVrPluginPlugin plugin;
     private ArSceneView arSceneView;
-    private ArSceneView vrLeftView;
     private ArSceneView vrRightView;
     private List<JSONObject> pois = new ArrayList<>();
     private boolean isVrMode = false;
@@ -316,61 +315,83 @@ public class ArVrPlugin {
 
     // ─── VR Mode ─────────────────────────────────────────────────
 
+    private View vrDivider;
+
     private void enableVR() {
         if (arSceneView == null) return;
-        arSceneView.setVisibility(View.GONE);
 
         ViewGroup parent = (ViewGroup) arSceneView.getParent();
-        int width = parent.getWidth() / 2;
+        int totalWidth = parent.getWidth();
         int height = parent.getHeight();
+        int halfWidth = totalWidth / 2;
 
-        // Left eye
-        vrLeftView = new ArSceneView(context);
-        FrameLayout.LayoutParams leftParams = new FrameLayout.LayoutParams(width, height);
+        // Resize the main ArSceneView to cover the left half
+        FrameLayout.LayoutParams leftParams = new FrameLayout.LayoutParams(halfWidth, height);
         leftParams.leftMargin = 0;
-        vrLeftView.setLayoutParams(leftParams);
+        arSceneView.setLayoutParams(leftParams);
 
-        // Right eye
+        // Create a mirrored right-eye view by duplicating the ArSceneView
+        // ARCore only supports one session, so we create a second ArSceneView
+        // that shares the same session's camera imagery
         vrRightView = new ArSceneView(context);
-        FrameLayout.LayoutParams rightParams = new FrameLayout.LayoutParams(width, height);
-        rightParams.leftMargin = width;
+        FrameLayout.LayoutParams rightParams = new FrameLayout.LayoutParams(halfWidth, height);
+        rightParams.leftMargin = halfWidth;
         vrRightView.setLayoutParams(rightParams);
 
         int index = parent.indexOfChild(arSceneView);
-        parent.addView(vrLeftView, index);
         parent.addView(vrRightView, index);
 
+        // Share the existing session with the right eye
         try {
-            // Share the same ARCore session
             Session session = arSceneView.getSession();
             if (session != null) {
-                vrLeftView.setupSession(session);
+                // The right view renders the same scene without owning the session
                 vrRightView.setupSession(session);
-                vrLeftView.resume();
                 vrRightView.resume();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            android.util.Log.w("ArVrPlugin", "VR right eye setup issue: " + e.getMessage());
+            // Fallback: Just duplicate the geometry by keeping both views alive
         }
+
+        // Add center divider line
+        vrDivider = new View(context);
+        vrDivider.setBackgroundColor(Color.WHITE);
+        FrameLayout.LayoutParams dividerParams =
+                new FrameLayout.LayoutParams(4, height);
+        dividerParams.leftMargin = halfWidth - 2;
+        vrDivider.setLayoutParams(dividerParams);
+        parent.addView(vrDivider);
+
+        // Force landscape orientation for VR
+        plugin.getActivity().setRequestedOrientation(
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
     }
 
     private void disableVR() {
-        ViewGroup parent = null;
-        if (vrLeftView != null) {
-            vrLeftView.pause();
-            parent = (ViewGroup) vrLeftView.getParent();
-            if (parent != null) parent.removeView(vrLeftView);
-            vrLeftView = null;
-        }
+        // Remove right eye
         if (vrRightView != null) {
             vrRightView.pause();
-            parent = (ViewGroup) vrRightView.getParent();
+            ViewGroup parent = (ViewGroup) vrRightView.getParent();
             if (parent != null) parent.removeView(vrRightView);
             vrRightView = null;
         }
-        if (arSceneView != null) {
-            arSceneView.setVisibility(View.VISIBLE);
+        // Remove divider
+        if (vrDivider != null) {
+            ViewGroup parent = (ViewGroup) vrDivider.getParent();
+            if (parent != null) parent.removeView(vrDivider);
+            vrDivider = null;
         }
+        // Restore main ArSceneView to full size
+        if (arSceneView != null) {
+            FrameLayout.LayoutParams fullParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT);
+            arSceneView.setLayoutParams(fullParams);
+        }
+        // Restore rotation
+        plugin.getActivity().setRequestedOrientation(
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────
