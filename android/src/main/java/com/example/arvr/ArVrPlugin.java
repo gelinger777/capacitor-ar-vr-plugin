@@ -11,30 +11,37 @@ import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ArVrPlugin {
     private Context context;
-    private Bridge bridge;
+    private ArVrPluginPlugin plugin;
     private FrameLayout arContainer;
-    private List<JSObject> pois = new ArrayList<>();
+    private List<JSONObject> pois = new ArrayList<>();
     private boolean isVrMode = false;
 
-    public ArVrPlugin(Context context, Bridge bridge) {
+    public ArVrPlugin(Context context, ArVrPluginPlugin plugin) {
         this.context = context;
-        this.bridge = bridge;
+        this.plugin = plugin;
     }
 
     public void startSession(JSArray poiArray) {
         try {
-            this.pois = poiArray.toList();
-        } catch (JSONException e) {
+            this.pois = new ArrayList<>();
+            List<Object> list = poiArray.toList();
+            for (Object obj : list) {
+                if (obj instanceof JSONObject) {
+                    this.pois.add((JSONObject) obj);
+                }
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-        bridge.executeOnMainThread(() -> {
+        plugin.getBridge().executeOnMainThread(() -> {
             makeWebViewTransparent();
             setupAR();
             addAnchors();
@@ -42,9 +49,9 @@ public class ArVrPlugin {
     }
 
     public void stopSession() {
-        bridge.executeOnMainThread(() -> {
+        plugin.getBridge().executeOnMainThread(() -> {
             if (arContainer != null) {
-                ((ViewGroup) bridge.getWebView().getParent()).removeView(arContainer);
+                ((ViewGroup) plugin.getBridge().getWebView().getParent()).removeView(arContainer);
                 arContainer = null;
             }
             restoreWebView();
@@ -53,7 +60,7 @@ public class ArVrPlugin {
 
     public void toggleVRMode(boolean enable) {
         this.isVrMode = enable;
-        bridge.executeOnMainThread(() -> {
+        plugin.getBridge().executeOnMainThread(() -> {
             if (enable) {
                 // Implement Side-by-Side split for Android
             } else {
@@ -63,12 +70,12 @@ public class ArVrPlugin {
     }
 
     private void makeWebViewTransparent() {
-        View webView = bridge.getWebView();
+        View webView = plugin.getBridge().getWebView();
         webView.setBackgroundColor(Color.TRANSPARENT);
     }
 
     private void restoreWebView() {
-        bridge.getWebView().setBackgroundColor(Color.WHITE);
+        plugin.getBridge().getWebView().setBackgroundColor(Color.WHITE);
     }
 
     private void setupAR() {
@@ -77,27 +84,35 @@ public class ArVrPlugin {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
 
-        ViewGroup parent = (ViewGroup) bridge.getWebView().getParent();
-        int index = parent.indexOfChild(bridge.getWebView());
+        ViewGroup parent = (ViewGroup) plugin.getBridge().getWebView().getParent();
+        int index = parent.indexOfChild(plugin.getBridge().getWebView());
         parent.addView(arContainer, index);
     }
 
     private void addAnchors() {
-        for (JSObject poi : pois) {
-            String id = poi.getString("id");
-            Double lat = poi.getDouble("lat");
-            Double lng = poi.getDouble("lng");
+        for (JSONObject poi : pois) {
+            try {
+                String id = poi.getString("id");
+                Double lat = poi.getDouble("lat");
+                Double lng = poi.getDouble("lng");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     public void onObjectSelected(String id) {
-        for (JSObject poi : pois) {
-            if (poi.getString("id").equals(id)) {
-                JSObject ret = new JSObject();
-                ret.put("id", id);
-                ret.put("url", poi.getString("url"));
-                bridge.triggerWindowListener("onObjectSelected", ret.toString());
-                break;
+        for (JSONObject poi : pois) {
+            try {
+                if (poi.getString("id").equals(id)) {
+                    JSObject ret = new JSObject();
+                    ret.put("id", id);
+                    ret.put("url", poi.getString("url"));
+                    plugin.notifyObjectSelected(ret);
+                    break;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }

@@ -13,7 +13,7 @@ public class ArVrPluginPlugin extends Plugin {
 
     @Override
     public void load() {
-        implementation = new ArVrPlugin(getContext(), getBridge());
+        implementation = new ArVrPlugin(getContext(), this);
     }
 
     @PluginMethod
@@ -32,5 +32,9 @@ public class ArVrPluginPlugin extends Plugin {
     public void toggleVRMode(PluginCall call) {
         implementation.toggleVRMode(call.getBoolean("enable", false));
         call.resolve();
+    }
+
+    public void notifyObjectSelected(JSObject data) {
+        notifyListeners("onObjectSelected", data);
     }
 }
