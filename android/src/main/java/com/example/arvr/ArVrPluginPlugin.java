@@ -76,7 +76,6 @@ public class ArVrPluginPlugin extends Plugin {
 
     @PluginMethod
     public void startSession(PluginCall call) {
-        // Check permissions before starting
         if (getPermissionState("camera") != PermissionState.GRANTED ||
             getPermissionState("location") != PermissionState.GRANTED) {
             savedCall = call;
@@ -115,12 +114,6 @@ public class ArVrPluginPlugin extends Plugin {
     @PluginMethod
     public void stopSession(PluginCall call) {
         implementation.stopSession();
-        call.resolve();
-    }
-
-    @PluginMethod
-    public void toggleVRMode(PluginCall call) {
-        implementation.toggleVRMode(call.getBoolean("enable", false));
         call.resolve();
     }
 

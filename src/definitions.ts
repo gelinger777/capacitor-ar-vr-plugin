@@ -6,9 +6,7 @@ export interface Poi {
   lng: number;
   label: string;
   url: string;
-  icon?: string;       // Emoji or icon identifier (default: "📍")
-  rating?: number;     // 0–5 star rating (default: 4.0)
-  votes?: number;      // Number of user votes (default: 0)
+  image?: string;     // URL or asset path for thumbnail image
 }
 
 export interface ArVrSessionOptions {
@@ -25,10 +23,9 @@ export interface ArVrPluginPlugin {
   checkAvailability(): Promise<ArAvailabilityResult>;
   startSession(options: ArVrSessionOptions): Promise<void>;
   stopSession(): Promise<void>;
-  toggleVRMode(options: { enable: boolean }): Promise<void>;
 
   addListener(
     eventName: 'onObjectSelected',
-    listenerFunc: (data: { id: string; url: string }) => void,
+    listenerFunc: (data: { id: string; url: string; label: string }) => void,
   ): Promise<PluginListenerHandle>;
 }
